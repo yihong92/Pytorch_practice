@@ -86,3 +86,40 @@ print(tensor)
 # Add and reassign
 tensor = tensor + 10
 print(tensor)
+# Can also use torch functions
+print(torch.multiply(tensor, 10))
+# Element-wise multiplication (each element multiplies its equivalent, index 0->0, 1->1, 2->2)
+print(tensor, "*", tensor)
+print("Equals:", tensor * tensor)
+
+# Element-wise matrix multiplication
+print(tensor * tensor) # 元素間相乘的寫法
+# Matrix multiplication
+print(torch.matmul(tensor, tensor)) # 矩陣相乘類似於內積
+# Can also use the "@" symbol for matrix multiplication, though not recommended, torch.matmul method is faster
+
+# Shapes need to be in the right way
+tensor_A = torch.tensor([[1, 2],
+                         [3, 4],
+                         [5, 6]], dtype=torch.float32)
+tensor_B = torch.tensor([[7, 10],
+                         [8, 11],
+                         [9, 12]], dtype=torch.float32)
+#torch.matmul(tensor_A, tensor_B) # (this will error, the inner dimensions must match)
+# View tensor_A and tensor_B
+print(tensor_A)
+print(tensor_B)
+
+# View tensor_A and tensor_B.T
+print(tensor_A)
+print(tensor_B.T)
+
+# The operation works when tensor_B is transposed
+print(f"Original shapes: tensor_A = {tensor_A.shape}, tensor_B = {tensor_B.shape}\n")
+print(f"New shape: tensor_A = {tensor_A.shape} (same as above), tensor_B.T = {tensor_B.T.shape}\n")
+print(f"Multiplying: {tensor_A.shape} * {tensor_B.T.shape} <- inner dimensions match\n")
+print("Output:\n")
+output = torch.matmul(tensor_A, tensor_B.T)
+print(output)
+print(f"\nOutput shape: {output.shape}")
+
