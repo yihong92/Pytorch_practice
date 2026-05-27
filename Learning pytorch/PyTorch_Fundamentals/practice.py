@@ -122,4 +122,144 @@ print("Output:\n")
 output = torch.matmul(tensor_A, tensor_B.T)
 print(output)
 print(f"\nOutput shape: {output.shape}")
+# torch.mm is a shorcut for matmul
+print(torch.mm(tensor_A, tensor_B.T))
+
+# Since the linear layer starts with a random weights matrix, let's make it reproducible (more on this later)
+torch.manual_seed(42)
+# This uses matrix multiplication
+linear = torch.nn.Linear(in_features=2, # in_features = matches inner dimension of input
+                         out_features=6) # out_features = describes outer value
+x = tensor_A
+output = linear(x)
+print(f"Input shape: {x.shape}\n")
+print(f"Output:\n{output}\n\nOutput shape: {output.shape}")
+
+# Create a tensor
+x = torch.arange(0, 100, 10)
+print(x)
+print(f"Minimum: {x.min()}")
+print(f"Maximum: {x.max()}")
+# print(f"Mean: {x.mean()}") # this will error
+
+print(f"Mean: {x.type(torch.float32).mean()}") # won't work without float datatype
+print(f"Sum: {x.sum()}")
+# Can also use torch methods
+print(torch.max(x), torch.min(x), torch.mean(x.type(torch.float32)), torch.sum(x))
+
+# Create a tensor
+tensor = torch.arange(10, 100, 10)
+print(f"Tensor: {tensor}")
+
+# Returns index of max and min values
+print(f"Index where max value occurs: {tensor.argmax()}")
+print(f"Index where min value occurs: {tensor.argmin()}")
+
+# Create a tensor and check its datatype
+tensor = torch.arange(10., 100., 10.)
+print(tensor.dtype)
+# Create a float16 tensor
+tensor_float16 = tensor.type(torch.float16)
+print(tensor_float16)
+# Create an int8 tensor
+tensor_int8 = tensor.type(torch.int8)
+print(tensor_int8)
+
+# Create a tensor
+x = torch.arange(1., 8.)
+print(x, x.shape)
+# Add an extra dimension
+x_reshape = x.reshape(1, 7)
+print(x_reshape, x_reshape.shape)
+# Change view (keeps same data as original but changes view)
+# See more: https://stackoverflow.com/a/54507446/7900723
+z = x.view(1, 7)
+print(z, z.shape)
+# Changing z changes x
+z[:, 0] = 5
+print(z, x)
+
+# Stack tensors on top of each other
+x_stacked = torch.stack([x, x, x, x], dim=1) # try changeing dim to dim=1 and see what happens
+print(x_stacked)
+
+print(f"Previous tensor: {x_reshape}")
+print(f"Previous shape: {x_reshape.shape}")
+# Remove extra dimension from x_reshaped
+x_squeezed = x_reshape.squeeze()
+print(f"\nNew tensor: {x_squeezed}")
+print(f"New shape: {x_squeezed.shape}")
+
+print(f"Previous tensor: {x_squeezed}")
+print(f"Previous shape: {x_squeezed.shape}")
+# Add an extra dimension with unsqueeze
+x_unsqueezed = x_squeezed.unsqueeze(dim=0)
+print(f"\nNew tensor: {x_unsqueezed}")
+print(f"New shape: {x_unsqueezed.shape}")
+
+# Create tensor with specific shape
+x_original = torch.rand(size = (224, 224, 3))
+# Permute the original tensor to rearrange the axis order
+x_permuted = x_original.permute(2, 0, 1) # shifts axis 0->1, 1->2, 2->0
+print(f"Previous shape: {x_original.shape}")
+print(f"New shape: {x_permuted.shape}")
+
+# Create a tensor
+x = torch.arange(1, 10).reshape(1, 3, 3)
+print(x, x.shape)
+# Let's index bracket by bracket
+print(f"First square bracket:\n{x[0]}")
+print(f"Second square bracket: {x[0][0]}")
+print(f"Third square bracket {x[0][0][0]}")
+# Get all values of 0th dimension and the 0 index of 1st dimension
+print(x[:, 0])
+# Get all values of 0th & 1th dimensions but only index 1 of 2nd dimension
+print(x[:, :, 1])
+# Get all valuse of the 0 dimension but only the 1 index value of the 1st and 2nd dimension
+print(x[:, 1, 1])
+# Gen index 0 of 0th and 1st dimension and all values of 2nd dimension
+print(x[0, 0, :])
+
+# Numpy array to tensor
+import numpy as np
+array = np.arange(1.0, 8.0)
+tensor = torch.from_numpy(array) # numpy default float64, if want to convert use torch.from_numpy(array).type(torch.float32)
+print(array, tensor)
+
+# Change the array, keep the tensor
+array = array + 1
+print(array, tensor)
+
+# Tensor to NumPy array
+tensor = torch.ones(7) # create a tensor of ones with dtype = float32
+numpy_tensor = tensor.numpy() # will be dtype=float32 unless changed
+print(tensor, numpy_tensor)
+# Change the tensor, keep the array the same
+tensor = tensor + 1
+print(tensor, numpy_tensor)
+
+# Create two random tensors
+random_tensor_A = torch.rand(3, 4)
+random_tensor_B = torch.rand(3, 4)
+
+print(f"Tensor A:\n{random_tensor_A}")
+print(f"Tensor B:\n{random_tensor_B}")
+print(f"Does Tensor A equal Tensor B? (anywhere)")
+print(random_tensor_A == random_tensor_B)
+
+# Set the random seed
+import random
+RANDOM_SEED = 42 # try changing this to different values and see what happens to the numbers below
+torch.manual_seed(seed =RANDOM_SEED)
+random_tensor_C = torch.rand(3, 4)
+
+# Have to reset the seed every time a new rand() is called
+# Without this, tensor_D would be different to tensor_C
+torch.random.manual_seed(seed=RANDOM_SEED) # try commenting this line out and seeing what happens
+random_tensor_D = torch.rand(3, 4)
+
+print(f"Tensor C:\n{random_tensor_C}")
+print(f"Tensor D:\n{random_tensor_D}")
+print(f"Does Tensor C equal Tensor D? (anywhere)")
+print(random_tensor_C == random_tensor_D)
 
