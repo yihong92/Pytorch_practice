@@ -55,7 +55,7 @@ def plot_predictions(train_data = X_train,
     # Show the legend
     plt.legend(prop={"size" : 14})
 plot_predictions()
-#plt.show()
+plt.show()
 
 # Create a Linear Regression model class
 class LinearRegressionModel(nn.Module): # <- almost everything in PyTorch is a nn.Module (think of this as neural network lego blocks)
@@ -96,7 +96,7 @@ print(f"Number of testing samples: {len(X_test)}")
 print(f"number of predictions made: {len(y_preds)}")
 print(f"Predicted values:\n{y_preds}")
 plot_predictions(predictions=y_preds)
-#plt.show()
+plt.show()
 print(y_test - y_preds)
 
 # Create the loss function
@@ -136,5 +136,93 @@ for epoch in range(epochs):
     optimizer.step()
 
     ### Testing
-    
+
+    # Put the model in evaluation mode
+    model_0.eval()
+
+    with torch.inference_mode():
+        # 1. Forward pass no test data
+        test_pred = model_0(X_test)
+
+        # 2. Caculate loss on test data
+        test_loss = loss_fn(test_pred, y_test.type(torch.float)) # predictions come in torch.float datatype, so compaisons need to be done with tensors of the same type
+
+        # Print out what't happening
+        if epoch % 10 == 0:
+            epoch_count.append(epoch)
+            train_loss_values.append(loss.detach().numpy())
+            test_loss_values.append(test_loss.detach().numpy())
+            print(f"Epoch: {epoch} | MAE Train Loss: {loss} | MAE Test Loss: {test_loss}")
+
+# Plot the loss curves
+plt.plot(epoch_count, train_loss_values, label="Train loss")
+plt.plot(epoch_count, test_loss_values, label="Test loss")
+plt.title("Training and test loss curves")
+plt.ylabel("Loss")
+plt.xlabel("Epochs")
+plt.legend()
+plt.show()  
+
+# Find our model's learned parameters
+print("The model learned the following values for weights and bias")
+print(model_0.state_dict())
+print("\nAnd the original values for weights and bias are:")
+print(f"weights: {weight}, bias: {bias}")
+
+# Making predictions with a trained PyTroch model(inferece)
+# 1. Set the model in evaluation mode
+model_0.eval()
+
+# 2. Setup the inferece mode context manager
+with torch.inference_mode():
+    # 3. Make sure the calculations are done with model and data on same device
+    # in our case, we haven't setup device-agnostic code yet so our data and model are
+    # on the CPU by default.
+    # model_0.to(device)
+    # X_test = X_test.to(device)
+    y_preds = model_0(X_test)
+print(y_preds)
+
+plot_predictions(predictions=y_preds)
+plt.show()
+
+from pathlib import Path
+# 1. Create models directory
+MODEL_PATH = Path("models")
+MODEL_PATH.mkdir(parents=True, exist_ok=True)
+
+# 2. Create model save path
+MODE_NAME = "01_pytorch_workflow_model_0.pth"
+MODEL_SAVE_PATH = MODEL_PATH / MODE_NAME
+
+# 3. Save the model state dict
+print(f"Saving model to: {MODEL_SAVE_PATH}")
+torch.save(obj=model_0.state_dict(), # only saving the state_dict() only saves the models learned parameters
+           f=MODEL_SAVE_PATH)
+
+# Check the saved file path
+# ls -l models/01_pytorch_workflow_model_0.pth(write in terminal)
+
+# Instantiate a new instance of our model (this will be instantiated with random weights)
+loaded_model_0 = LinearRegressionModel()
+
+# Load the state_dict of our saved model (this will update the new instance of our model with trained weights)
+print(loaded_model_0.load_state_dict(torch.load(f=MODEL_SAVE_PATH, weights_only=True)))
+
+# Now to test our loaded model
+# 1. Put the loaded model into evaluation mode
+loaded_model_0.eval()
+
+# 2. Use the inference mode context manager to make predictions
+with torch.inference_mode():
+    loaded_model_preds = loaded_model_0(X_test) # perform a forward pass on the test data with the loaded model
+
+# Compare previous model predictions with loaded model predictions (these should be the same)
+print(y_preds == loaded_model_preds)
+
+
+
+
+
+
 
