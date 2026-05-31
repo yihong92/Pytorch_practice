@@ -298,4 +298,403 @@ X_test_regression, y_test_regression = X_regression[train_split:], y_regression[
 # Check the lengths of each split
 print(len(X_train_regression), len(y_train_regression), len(X_test_regression), len(y_test_regression))
 
+plot_predictions(train_data=X_train_regression,
+                 train_labels=y_train_regression,
+                 test_data=X_test_regression,
+                 test_labels=y_test_regression)
+plt.show()
+
+# Same architecture as model_1 (but using mm.Sequential)
+model_2 = nn.Sequential(
+    nn.Linear(in_features=1, out_features=10),
+    nn.Linear(in_features=10, out_features=10),
+    nn.Linear(in_features=10, out_features=1)
+).to(device)
+print(model_2)
+
+# Loss and optimizer
+loss_fn = nn.L1Loss()
+optimizer = torch.optim.SGD(model_2.parameters(), lr = 0.1)
+
+# Train the model
+torch.manual_seed(42)
+
+# Set the number of epochs
+epochs = 1000
+
+# Put data to target device
+X_train_regression, y_train_regression = X_train_regression.to(device), y_train_regression.to(device)
+X_test_regression, y_test_regression = X_test_regression.to(device), y_test_regression.to(device)
+
+for epoch in range(epochs):
+    ### Training
+    model_2.train()
+    # 1. Forward pass
+    y_pred = model_2(X_train_regression)
+
+    # 2. Calcualte loss(no accuracy since it's a regression problem, not classification)
+    loss = loss_fn(y_pred, y_train_regression)
+
+    # 3. Optimizer zero grad
+    optimizer.zero_grad()
+
+    # 4. Loss backwards
+    loss.backward()
+
+    # 5. Optimizer step
+    optimizer.step()
+
+    ### Testing
+    model_2.eval()
+    with torch.inference_mode():
+        # 1. Forward pass
+        test_pred = model_2(X_test_regression)
+        # 2. Calculate the loss
+        test_loss = loss_fn(test_pred, y_test_regression)
+
+    # Print out what's happening
+    if epoch % 100 == 0: 
+        print(f"Epoch: {epoch} | Train loss: {loss:.5f}, Test loss: {test_loss:.5f}")
+
+# Trun on evaluation mode
+model_2.eval()
+
+# Make predictions (inference)
+with torch.inference_mode():
+    y_pred = model_2(X_test_regression)
+
+# Plot data and prediction with data on the CPU (matplotlib can't handle data on the GPU)
+# (try removing .cpu() from one of the below and see what happens)
+plot_predictions(train_data=X_train_regression.cpu(),
+                 train_labels=y_train_regression.cpu(),
+                 test_data=X_test_regression.cpu(),
+                 test_labels=y_test_regression.cpu(),
+                 predictions=y_pred.cpu())
+plt.show()
+
+# Make and plot data
+n_samples = 1000
+X, y = make_circles(n_samples=1000,
+                    noise=0.03,
+                    random_state=42)
+plt.scatter(X[:, 0], X[:, 1], c=y, cmap=plt.cm.RdBu)
+plt.show()
+
+# Convert to tensors and split into train and test sets
+# Turn data into tensors
+X = torch.from_numpy(X).type(torch.float)
+y = torch.from_numpy(y).type(torch.float)
+
+# Split into train and test sets
+X_train, X_test, y_train, y_test = train_test_split(X,
+                                                    y,
+                                                    test_size=0.2,
+                                                    random_state=42)
+print(X_train[:5], y_train[:5])
+
+# Build model with non-linear activation function
+class CircleModelV2(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.layer_1 = nn.Linear(in_features=2, out_features=10)
+        self.layer_2 = nn.Linear(in_features=10, out_features=10)
+        self.layer_3 = nn.Linear(in_features=10, out_features=1)
+        self.relu = nn.ReLU() # <- add in ReLU activation function
+        # Can also put sigmoid in the model
+        # This would mean you don't need to use it on the prediction
+        # self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        # Intersperse the ReLU activation function between layers
+        return self.layer_3(self.relu(self.layer_2(self.relu(self.layer_1(x)))))
+
+model_3 = CircleModelV2().to(device)
+print(model_3)
+
+# Set loss and optimizer
+loss_fn = nn.BCEWithLogitsLoss()
+optimizer = torch.optim.SGD(model_3.parameters(), lr=0.1)
+
+# Fit the model
+torch.manual_seed(42)
+epochs = 3000
+
+# Put all data on target device
+X_train, y_train = X_train.to(device), y_train.to(device)
+X_test, y_test = X_test.to(device), y_test.to(device)
+
+for epoch in range(epochs):
+    ### Training
+    model_3.train()
+    # 1. Forward pass
+    y_logits = model_3(X_train).squeeze()
+    y_pred = torch.round(torch.sigmoid(y_logits)) # logits -> prediction probabilities -> prediction labels
+
+    # 2. Calculate loss and accuracy
+    loss = loss_fn(y_logits, y_train) # BCEWithLogitsLoss calculates loss using logits
+    acc = accuracy_fn(y_true=y_train,
+                      y_pred=y_pred)
+    
+    # 3. Optimizer zero grad
+    optimizer.zero_grad()
+
+    # 4. Loss backward
+    loss.backward()
+
+    # 5. Optimizer step
+    optimizer.step()
+
+    # Testing
+    model_3.eval()
+    with torch.inference_mode():
+        # 1. Forward pass
+        test_logits = model_3(X_test).squeeze()
+        test_pred = torch.round(torch.sigmoid(test_logits)) # logits -> prediction probabilities -> prediction labels
+        # 2. Calculate loss and accuracy
+        test_loss = loss_fn(test_logits, y_test)
+        test_acc = accuracy_fn(y_true=y_test,
+                               y_pred=test_pred)
+    # Print out what's happening
+    if epoch % 100 == 0:
+        print(f"Epoch: {epoch} | Loss: {loss:.5f}, Accuracy: {acc:.2f}% | Test Loss: {test_loss:.5f}, Test Accuracy: {test_acc:.2f}%")
+
+# Make predictions
+model_3.eval()
+with torch.inference_mode():
+    y_preds = torch.round(torch.sigmoid(model_3(X_test))).squeeze()
+print(y_preds[:5], y_test[:5])
+
+# Plot dicision boundaries for training and test sets
+plt.figure(figsize=(12, 6))
+plt.subplot(1, 2, 1)
+plt.title("Train")
+plot_decision_boundary(model_1, X_train, y_train) # model_1 = no non-linearity
+plt.subplot(1, 2, 2)
+plt.title("Test")
+plot_decision_boundary(model_3, X_test, y_test) # model_3 = has non-linearity
+plt.show()
+
+# What does a non-linear activation look like?
+# Create a toy tensor (similar to the data going into our model(s))
+A = torch.arange(-10, 10, 1, dtype=torch.float32)
+print(A)
+
+# Visualize the toy tensor
+plt.plot(A)
+plt.show()
+
+# Create ReLU function by hand (The ReLU function turns all negatives to 0 and leaves the positive values as they are.)
+def relu(x):
+    return torch.maximum(torch.tensor(0), x) # inputs must be tensors
+# Pass toy tensor through ReLU function
+print(relu(A))
+
+# Plot ReLU activated toy tensor
+plt.plot(relu(A))
+plt.show()
+
+# Create a custom sigmoid function
+def sigmoid(x):
+    return 1 / (1 + torch.exp(-x))
+
+# Test custom sigmoid on toy tensor
+print(sigmoid(A))
+
+# Plot sigmoid activated toy tensor
+plt.plot(sigmoid(A))
+plt.show()
+
+
+# multi-class PyTorch model
+# Import dependencies
+from sklearn.datasets import make_blobs
+from sklearn.model_selection import train_test_split
+
+# Set the hyperparameters for data creation
+NUM_CLASSES = 4
+NUM_FEATURES = 2
+RANDOM_SEED = 42
+
+# 1. Create multi-class data
+X_blob, y_blob = make_blobs(n_samples=1000,
+                            n_features=NUM_FEATURES, # X features
+                            centers=NUM_CLASSES, # y lables
+                            cluster_std=1.5, # give the clusters a little shake up (try changing thes to 1.0, the default)
+                            random_state=RANDOM_SEED)
+
+# 2. Turn data into tensors
+X_blob = torch.from_numpy(X_blob).type(torch.float)
+y_blob = torch.from_numpy(y_blob).type(torch.LongTensor)
+print(X_blob[:5], y_blob[:5])
+
+# Split into train and test sets
+X_blob_train, X_blob_test, y_blob_train, y_blob_test = train_test_split(X_blob,
+                                                                        y_blob,
+                                                                        test_size=0.2,
+                                                                        random_state=RANDOM_SEED)
+
+# 4. Plot data
+plt.figure(figsize=(10, 7))
+plt.scatter(X_blob[:, 0], X_blob[:, 1], c=y_blob, cmap=plt.cm.RdYlBu)
+plt.show()
+
+# Build model
+class BlobModel(nn.Module):
+    def __init__(self, input_features, output_features, hidden_units = 8):
+        """Initializes all required hyperparameters for a multi-class classification model.
+        Args:
+            input_features (int): Number of input features to the model.
+            out_features (int): Number of output features of the model
+              (how many classes there are).
+            hidden_units (int): Number of hidden units between layers, default 8.
+        """
+        super().__init__()
+        self.linear_layer_stack = nn.Sequential(
+            nn.Linear(in_features=input_features, out_features=hidden_units),
+            # nn.ReLU(), # <- does our dataset require non-linear layers? (try uncommenting and see if the results change)
+            nn.Linear(in_features=hidden_units, out_features=hidden_units),
+            # nn.ReLU(), # <- does our dataset require non-linear layers? (try uncommenting and see if the results change)
+            nn.Linear(in_features=hidden_units, out_features=output_features) # how many classes are there?
+        )
+    def forward(self, x):
+        return self.linear_layer_stack(x)
+
+# Create an instance of BlobModel and send it to the target device
+model_4 = BlobModel(input_features=NUM_FEATURES,
+                    output_features=NUM_CLASSES,
+                    hidden_units=8).to(device)
+print(model_4)
+
+# Create loss and optimizer
+loss_fn = nn.CrossEntropyLoss()
+optimizer = torch.optim.SGD(model_4.parameters(),
+                            lr = 0.1) # exercise: try changing the learning rate here and seeing what happens to the model's performance
+
+# Perform a single forward pass on the data (we'll need to put it to the target device for it to work)
+print(model_4(X_blob_train.to(device))[:5])
+
+# How many elements in a single prediction sample?
+print(model_4(X_blob_train.to(device))[0].shape, NUM_CLASSES)
+
+# Make prediction logits with mode
+y_logits = model_4(X_blob_test.to(device))
+
+# Perform softmax calculation on logits across dimension 1 to ger prediction probabilities
+y_pred_probs = torch.softmax(y_logits, dim=1)
+print(y_logits[:5])
+print(y_pred_probs[:5])
+
+# Sum the first sample output of the softmax activation function 
+print(torch.sum(y_pred_probs[0]))
+
+# Which class does the model think is *most* likely at the index 0 sample?
+print(y_pred_probs[0])
+print(torch.argmax(y_pred_probs[0]))
+
+# Fit the model
+torch.manual_seed(42)
+
+# Set number of epochs
+epochs = 1000
+
+# Put data to target device
+X_blob_train, y_blob_train = X_blob_train.to(device), y_blob_train.to(device)
+X_blob_test, y_blob_test = X_blob_test.to(device), y_blob_test.to(device)
+
+for epoch in range(epochs):
+    ### Training
+    model_4.train()
+
+    # 1. Forward pass
+    y_logits = model_4(X_blob_train) # model outputs raw logits
+    y_pred = torch.softmax(y_logits, dim=1).argmax(dim=1) # go from logits -> prediction probabilities -> prediction labels
+    # print(y_logits)
+    # 2. Calculate loss and accuracy
+    loss = loss_fn(y_logits, y_blob_train)
+    acc = accuracy_fn(y_true=y_blob_train,
+                      y_pred=y_pred)
+    
+    # 3. Optimizer zero grad
+    optimizer.zero_grad()
+
+    # 4. Loss backwards
+    loss.backward()
+
+    # 5. Optimizer step
+    optimizer.step()
+
+    ### Testing
+    model_4.eval()
+    with torch.inference_mode():
+        # 1. Forward pass
+        test_logits = model_4(X_blob_test)
+        test_pred = torch.softmax(test_logits, dim=1).argmax(dim=1)
+        # 2. Calculate test loss and accuracy
+        test_loss = loss_fn(test_logits, y_blob_test)
+        test_acc = accuracy_fn(y_true=y_blob_test,
+                               y_pred=test_pred)
+        
+    # Print out what's happening
+    if epoch % 10 == 0:
+        print(f"Epoch: {epoch} | Loss: {loss:.5f}, Acc: {acc:.2f}% | Test Loss: {test_loss:.5f}, Test Acc: {test_acc:.2f}%")
+
+# Make predictions
+model_4.eval()
+with torch.inference_mode():
+    y_logits = model_4(X_blob_test)
+
+# View the first 10 predictions
+print(y_logits[:10])
+
+# Turn predicted logits in prediction probabilities
+y_pred_probs = torch.softmax(y_logits, dim=1)
+
+# Turn prediction probabilities into prediction labels
+y_preds = y_pred_probs.argmax(dim=1)
+
+# Compare first 10 model preds and test labels
+print(f"Predictions: {y_preds[:10]}\nLabels: {y_blob_test[:10]}")
+print(f"Test accuracy: {accuracy_fn(y_true=y_blob_test, y_pred=y_preds)}%")
+
+plt.figure(figsize=(12, 6))
+plt.subplot(1, 2, 1)
+plt.title("Train")
+plot_decision_boundary(model_4, X_blob_train, y_blob_train)
+plt.subplot(1, 2, 2)
+plt.title("Test")
+plot_decision_boundary(model_4, X_blob_test, y_blob_test)
+plt.show()
+
+
+from torchmetrics import Accuracy
+# Setup metric and make sure it's on the target device
+torchmetrics_accuracy = Accuracy(task="multiclass", num_classes=4).to(device)
+
+# Calculate accuracy
+print(torchmetrics_accuracy(y_preds, y_blob_test))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
